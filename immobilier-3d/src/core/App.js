@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { Timer } from 'three/addons/misc/Timer.js'; // On importe le nouveau Timer
 import StateManager from './StateManager.js';
+import LandingState from '../states/LandingState.js';
 
 export default class App {
     constructor() {
@@ -13,30 +13,33 @@ export default class App {
 
         this.stateManager = new StateManager();
         
-        // On utilise le Timer moderne
-        this.timer = new Timer();
+        this.clock = new THREE.Clock(); 
 
         window.addEventListener('resize', this.onResize.bind(this));
     }
 
     async init() {
         console.log("App initialisée avec succès !");
+        
+        const landing = new LandingState(this);
+        await this.stateManager.switchState(landing);
+        
         this.tick(); 
     }
 
     onResize() {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        if (this.stateManager.currentState && this.stateManager.currentState.camera) {
+            this.stateManager.currentState.camera.aspect = window.innerWidth / window.innerHeight;
+            this.stateManager.currentState.camera.updateProjectionMatrix();
+        }
     }
 
     tick() {
-        // Mise à jour du chronomètre
-        this.timer.update();
-        const deltaTime = this.timer.getDelta();
+        // On utilise getDelta() sur le clock
+        const deltaTime = this.clock.getDelta();
         
-        // Transmission du temps au StateManager
         this.stateManager.update(deltaTime);
-
-        // Boucle infinie d'animation
         requestAnimationFrame(this.tick.bind(this));
     }
 }
