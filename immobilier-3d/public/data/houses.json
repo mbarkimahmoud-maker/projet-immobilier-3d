@@ -1,0 +1,11 @@
+[
+  {
+    "id": "house-1",
+    "name": "Maison Test",
+    "price": "450 000 €",
+    "exteriorModel": "/models/exterior_1.glb",
+    "interiorModel": "/models/interior_1.glb",
+    "position": [0, 0, 0],
+    "hotspots": []
+  }
+]
