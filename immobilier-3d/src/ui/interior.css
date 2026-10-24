@@ -58,3 +58,36 @@
   font-weight: 600;
   color: #e67e22;
 }
+/* Barre d'aide et bouton 360° */
+.interior-toolbar {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+  font-family: system-ui, sans-serif;
+}
+
+.toolbar-button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: #e67e22;
+  color: #fff;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.toolbar-button:hover {
+  background: #cf6d17;
+}
+
+.toolbar-hint {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(20, 30, 40, 0.75);
+  color: #fff;
+  font-size: 13px;
+}

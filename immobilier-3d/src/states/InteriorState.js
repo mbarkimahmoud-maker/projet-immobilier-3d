@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { MeshBVH, StaticGeometryGenerator } from 'three-mesh-bvh';
 import BaseState from './BaseState.js';
@@ -24,15 +25,14 @@ export default class InteriorState extends BaseState {
     this.isReady = false; // passe à true quand tout est chargé
 
     // Déplacements
-    this.keys = { forward: false, backward: false, left: false, right: false, run: false };
+    this.keys = { forward: false, backward: false, left: false, right: false };
     this.walkSpeed = 2.5; // mètres par seconde
-    this.runSpeed = 5;    // avec Maj enfoncée
 
     // Collisions
-    this.collider = null;        // version simplifiée du modèle, utilisée seulement pour les collisions
-    this.playerRadius = 0.25;    // rayon de la capsule du joueur (en mètres)
-    this.kneeHeight = 0.35;      // bas de la capsule (en dessous, on passe par-dessus)
-    this.eyeHeight = 1.6;        // hauteur de la caméra
+    this.collider = null;
+    this.playerRadius = 0.25;
+    this.kneeHeight = 0.35;
+    this.eyeHeight = 1.6;
     this.tempSegment = new THREE.Line3();
     this.tempBox = new THREE.Box3();
     this.tempTriPoint = new THREE.Vector3();
@@ -42,11 +42,24 @@ export default class InteriorState extends BaseState {
     this.labelRenderer = null;
     this.infoPanel = null;
 
+    // Mode 360°
+    this.isPanorama = false;
+    this.panoScene = null;
+    this.panoCamera = null;
+    this.panoControls = null;
+    this.cubeRenderTarget = null;
+
+    // Barre d'aide
+    this.toolbar = null;
+    this.panoButton = null;
+    this.hint = null;
+
     // On "attache" les fonctions à this pour pouvoir retirer les écouteurs dans exit()
     this.onClick = this.onClick.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
-    this.resetKeys = this.resetKeys.bind(this);
+    this.onLock = this.onLock.bind(this);
+    this.onUnlock = this.onUnlock.bind(this);
     this.onResize = this.onResize.bind(this);
     this.hideInfo = this.hideInfo.bind(this);
   }
@@ -94,20 +107,22 @@ export default class InteriorState extends BaseState {
     // Contrôles première personne
     this.controls = new PointerLockControls(this.camera, this.app.canvas);
     this.app.canvas.addEventListener('click', this.onClick);
-    this.controls.addEventListener('unlock', this.resetKeys); // Échap : on arrête de marcher
-    this.controls.addEventListener('lock', this.hideInfo);    // reprendre la visite ferme le panneau
+    this.controls.addEventListener('lock', this.onLock);
+    this.controls.addEventListener('unlock', this.onUnlock);
 
     // Clavier
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
 
-    // Points d'intérêt
+    // Interface
     this.createLabelRenderer();
     this.createHotspots();
     this.createInfoPanel();
+    this.createToolbar();
     window.addEventListener('resize', this.onResize);
 
     this.isReady = true;
+    this.updateUI();
   }
 
   prepareModel(model) {
@@ -132,8 +147,6 @@ export default class InteriorState extends BaseState {
 
   // ---------- Collisions ----------
 
-  // Fusionne tous les objets du modèle en une seule géométrie
-  // et construit une structure de recherche rapide (BVH) dessus
   buildCollider() {
     this.model.updateMatrixWorld(true);
 
@@ -146,7 +159,6 @@ export default class InteriorState extends BaseState {
     this.collider = new THREE.Mesh(geometry); // jamais ajouté à la scène : invisible
   }
 
-  // Repousse le joueur hors des murs et des meubles
   resolveCollisions() {
     const position = this.camera.position;
     const radius = this.playerRadius;
@@ -189,7 +201,6 @@ export default class InteriorState extends BaseState {
 
   // ---------- Points d'intérêt ----------
 
-  // Calque HTML qui affiche les étiquettes par-dessus la 3D
   createLabelRenderer() {
     this.labelRenderer = new CSS2DRenderer();
     this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -197,7 +208,6 @@ export default class InteriorState extends BaseState {
     document.body.appendChild(this.labelRenderer.domElement);
   }
 
-  // Une étiquette cliquable par point d'intérêt du JSON
   createHotspots() {
     const hotspots = this.houseData.hotspots ?? [];
 
@@ -213,7 +223,6 @@ export default class InteriorState extends BaseState {
     });
   }
 
-  // Panneau d'information (caché au départ)
   createInfoPanel() {
     this.infoPanel = document.createElement('div');
     this.infoPanel.className = 'info-panel hidden';
@@ -235,24 +244,125 @@ export default class InteriorState extends BaseState {
     if (this.infoPanel) this.infoPanel.classList.add('hidden');
   }
 
-  onResize() {
-    if (this.labelRenderer) this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
-  }
-
-  // Outil de développement : affiche la position actuelle pour placer une étiquette
   logPosition() {
     const p = this.camera.position;
     console.log(`"position": [${p.x.toFixed(2)}, 1.2, ${p.z.toFixed(2)}]`);
   }
 
+  // ---------- Mode 360° ----------
+
+  togglePanorama() {
+    if (this.isPanorama) this.exitPanorama();
+    else this.enterPanorama();
+  }
+
+  enterPanorama() {
+    if (!this.isReady || this.isPanorama) return;
+
+    this.controls.unlock(); // libère la souris pour pouvoir glisser
+    this.resetKeys();
+    this.hideInfo();
+
+    // 1. Capture : 6 caméras à 90° prennent l'appartement dans toutes les directions
+    this.cubeRenderTarget = new THREE.WebGLCubeRenderTarget(1024);
+    const cubeCamera = new THREE.CubeCamera(0.05, 100, this.cubeRenderTarget);
+    cubeCamera.position.copy(this.camera.position);
+    cubeCamera.update(this.app.renderer, this.scene);
+
+    // 2. Une scène vide dont le fond est la photo 360°
+    this.panoScene = new THREE.Scene();
+    this.panoScene.background = this.cubeRenderTarget.texture;
+
+    // 3. Une caméra au centre, qui regarde au départ dans la même direction que le joueur
+    this.panoCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 10);
+    const lookDirection = this.camera.getWorldDirection(new THREE.Vector3());
+    this.panoCamera.position.copy(lookDirection).multiplyScalar(-0.01);
+
+    // 4. OrbitControls : la caméra tourne autour d'un point juste devant elle = tourner la tête
+    this.panoControls = new OrbitControls(this.panoCamera, this.app.canvas);
+    this.panoControls.target.set(0, 0, 0);
+    this.panoControls.enableZoom = false;
+    this.panoControls.enablePan = false;
+    this.panoControls.enableDamping = true; // mouvement fluide qui ralentit doucement
+    this.panoControls.rotateSpeed = -0.4;   // négatif : on "tire" l'image avec la souris
+    this.panoControls.update();
+
+    this.isPanorama = true;
+    this.labelRenderer.domElement.style.display = 'none'; // pas d'étiquettes en mode photo
+    this.updateUI();
+  }
+
+  exitPanorama() {
+    if (!this.isPanorama) return;
+
+    this.panoControls.dispose();
+    this.cubeRenderTarget.dispose();
+    this.panoControls = null;
+    this.cubeRenderTarget = null;
+    this.panoScene = null;
+    this.panoCamera = null;
+
+    this.isPanorama = false;
+    this.labelRenderer.domElement.style.display = '';
+    this.updateUI();
+  }
+
+  // ---------- Barre d'aide ----------
+
+  createToolbar() {
+    this.toolbar = document.createElement('div');
+    this.toolbar.className = 'interior-toolbar';
+
+    this.panoButton = document.createElement('button');
+    this.panoButton.className = 'toolbar-button';
+    this.panoButton.addEventListener('click', () => {
+      this.panoButton.blur(); // évite que les touches du clavier "cliquent" sur le bouton
+      this.togglePanorama();
+    });
+
+    this.hint = document.createElement('span');
+    this.hint.className = 'toolbar-hint';
+
+    this.toolbar.append(this.panoButton, this.hint);
+    document.body.appendChild(this.toolbar);
+  }
+
+  // Met à jour le bouton et le texte d'aide selon la situation
+  updateUI() {
+    if (!this.toolbar) return;
+
+    this.panoButton.textContent = this.isPanorama ? 'Quitter la vue 360°' : 'Vue 360°';
+
+    if (this.isPanorama) {
+      this.hint.textContent = 'Glissez pour regarder autour · V ou Échap : quitter';
+    } else if (this.controls && this.controls.isLocked) {
+      this.hint.textContent = 'ZQSD : marcher · V : vue 360° · Échap : libérer la souris';
+    } else {
+      this.hint.textContent = 'Cliquez dans la scène pour visiter · Cliquez sur une étiquette pour les détails';
+    }
+  }
+
   // ---------- Contrôles ----------
 
   onClick() {
-    if (this.controls) this.controls.lock(); // verrouille la souris dans la page
+    if (this.isPanorama) return; // en mode 360°, cliquer sert à glisser, pas à verrouiller
+    if (this.controls) this.controls.lock();
+  }
+
+  onLock() {
+    this.hideInfo(); // reprendre la visite ferme le panneau
+    this.updateUI();
+  }
+
+  onUnlock() {
+    this.resetKeys(); // Échap en marchant : on s'arrête
+    this.updateUI();
   }
 
   onKeyDown(event) {
     if (event.code === 'KeyP') this.logPosition();
+    if (event.code === 'KeyV') this.togglePanorama();
+    if (event.code === 'Escape' && this.isPanorama) this.exitPanorama();
     this.setKey(event.code, true);
   }
 
@@ -260,7 +370,6 @@ export default class InteriorState extends BaseState {
     this.setKey(event.code, false);
   }
 
-  // Associe chaque touche physique à une direction (marche en AZERTY et en QWERTY)
   setKey(code, isPressed) {
     switch (code) {
       case 'KeyW':      // Z sur un clavier AZERTY
@@ -275,9 +384,6 @@ export default class InteriorState extends BaseState {
       case 'KeyD':
       case 'ArrowRight':
         this.keys.right = isPressed; break;
-      case 'ShiftLeft':
-      case 'ShiftRight':
-        this.keys.run = isPressed; break;
     }
   }
 
@@ -285,28 +391,43 @@ export default class InteriorState extends BaseState {
     for (const key in this.keys) this.keys[key] = false;
   }
 
+  onResize() {
+    if (this.labelRenderer) this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    // App.js met à jour this.camera, mais pas la caméra du mode 360°
+    if (this.panoCamera) {
+      this.panoCamera.aspect = window.innerWidth / window.innerHeight;
+      this.panoCamera.updateProjectionMatrix();
+    }
+  }
+
   // ---------- Boucle ----------
 
   update(deltaTime) {
-    // App.js ne dessine pas : c'est l'état actif qui fait le rendu
+    // Mode 360° : on affiche seulement la photo
+    if (this.isPanorama) {
+      this.panoControls.update();
+      this.app.renderer.render(this.panoScene, this.panoCamera);
+      return;
+    }
+
+    // Mode visite : App.js ne dessine pas, c'est l'état actif qui fait le rendu
     this.app.renderer.render(this.scene, this.camera);
     if (this.labelRenderer) this.labelRenderer.render(this.scene, this.camera);
 
     if (!this.isReady) return;
-    if (!this.controls.isLocked) return; // on ne marche que quand la souris est verrouillée
+    if (!this.controls.isLocked) return;
 
-    const dt = Math.min(deltaTime, 0.05); // évite de traverser un mur fin en un seul pas
+    const dt = Math.min(deltaTime, 0.05);
 
     const direction = new THREE.Vector2(
       Number(this.keys.right) - Number(this.keys.left),
       Number(this.keys.forward) - Number(this.keys.backward)
     );
-    if (direction.lengthSq() === 0) return; // aucune touche enfoncée
+    if (direction.lengthSq() === 0) return;
 
-    direction.normalize(); // même vitesse en diagonale qu'en ligne droite
+    direction.normalize();
 
-    const speed = this.keys.run ? this.runSpeed : this.walkSpeed;
-    const distance = speed * dt;
+    const distance = this.walkSpeed * dt;
 
     this.controls.moveForward(direction.y * distance);
     this.controls.moveRight(direction.x * distance);
@@ -317,13 +438,16 @@ export default class InteriorState extends BaseState {
   // ---------- Nettoyage ----------
 
   exit() {
+    this.exitPanorama();
+
     window.removeEventListener('resize', this.onResize);
     if (this.labelRenderer) this.labelRenderer.domElement.remove();
     if (this.infoPanel) this.infoPanel.remove();
+    if (this.toolbar) this.toolbar.remove();
 
     if (this.controls) {
-      this.controls.removeEventListener('unlock', this.resetKeys);
-      this.controls.removeEventListener('lock', this.hideInfo);
+      this.controls.removeEventListener('lock', this.onLock);
+      this.controls.removeEventListener('unlock', this.onUnlock);
       this.controls.unlock();
       this.controls.dispose();
     }
