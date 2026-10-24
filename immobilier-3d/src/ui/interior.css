@@ -1,0 +1,60 @@
+/* Calque transparent qui contient les étiquettes, par-dessus la 3D */
+.label-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none; /* les clics passent à travers, sauf sur les étiquettes */
+}
+
+.hotspot {
+  pointer-events: auto;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(20, 30, 40, 0.8);
+  color: #fff;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.hotspot:hover {
+  background: #e67e22;
+}
+
+.info-panel {
+  position: fixed;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-50%);
+  width: 300px;
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #222;
+  font-family: system-ui, sans-serif;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.info-panel.hidden {
+  display: none;
+}
+
+.info-panel h2 {
+  margin: 0 0 8px;
+}
+
+.info-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  border: none;
+  background: none;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.info-area {
+  font-weight: 600;
+  color: #e67e22;
+}
