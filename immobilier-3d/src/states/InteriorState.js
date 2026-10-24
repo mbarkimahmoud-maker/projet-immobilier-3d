@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { MeshBVH, StaticGeometryGenerator } from 'three-mesh-bvh';
 import BaseState from './BaseState.js';
+import LandingState from './LandingState.js';
 import '../ui/interior.css';
 
 export default class InteriorState extends BaseState {
@@ -22,17 +23,18 @@ export default class InteriorState extends BaseState {
 
     this.controls = null;
     this.model = null;
-    this.isReady = false; // passe à true quand tout est chargé
+    this.isReady = false;   // passe à true quand tout est chargé
+    this.isLeaving = false; // évite un double clic sur le bouton de retour
 
     // Déplacements
     this.keys = { forward: false, backward: false, left: false, right: false };
     this.walkSpeed = 2.5; // mètres par seconde
 
     // Collisions
-    this.collider = null;
-    this.playerRadius = 0.25;
-    this.kneeHeight = 0.35;
-    this.eyeHeight = 1.6;
+    this.collider = null;        // version simplifiée du modèle, utilisée seulement pour les collisions
+    this.playerRadius = 0.25;    // rayon de la capsule du joueur (en mètres)
+    this.kneeHeight = 0.35;      // bas de la capsule (en dessous, on passe par-dessus)
+    this.eyeHeight = 1.6;        // hauteur de la caméra
     this.tempSegment = new THREE.Line3();
     this.tempBox = new THREE.Box3();
     this.tempTriPoint = new THREE.Vector3();
@@ -51,6 +53,7 @@ export default class InteriorState extends BaseState {
 
     // Barre d'aide
     this.toolbar = null;
+    this.backButton = null;
     this.panoButton = null;
     this.hint = null;
 
@@ -65,12 +68,14 @@ export default class InteriorState extends BaseState {
   }
 
   async enter() {
-    // Si on arrive sans données (test avec ?start=interior), on prend la première maison du JSON
-    if (!this.houseData.hotspots) {
+    // Si on arrive sans données (test direct), on prend la maison indiquée dans l'URL (?house=house-2),
+    // ou la première du JSON
+    if (!this.houseData.id) {
       try {
         const response = await fetch('/data/houses.json');
         const houses = await response.json();
-        this.houseData = houses[0];
+        const wantedId = new URLSearchParams(window.location.search).get('house');
+        this.houseData = houses.find((h) => h.id === wantedId) ?? houses[0];
       } catch (error) {
         console.error('Impossible de lire houses.json :', error);
       }
@@ -100,9 +105,11 @@ export default class InteriorState extends BaseState {
 
     this.buildCollider();
 
-    // Position de départ : au bout du couloir d'entrée, à hauteur d'yeux, regard vers le salon
-    this.camera.position.set(0.9, this.eyeHeight, -5.2);
-    this.camera.lookAt(0.9, this.eyeHeight, 0);
+    // Position de départ et direction du regard, propres à chaque maison
+    const [startX, startZ] = this.houseData.spawnPosition ?? [0, 0];
+    const [lookX, lookZ] = this.houseData.spawnLookAt ?? [startX, startZ + 1];
+    this.camera.position.set(startX, this.eyeHeight, startZ);
+    this.camera.lookAt(lookX, this.eyeHeight, lookZ);
 
     // Contrôles première personne
     this.controls = new PointerLockControls(this.camera, this.app.canvas);
@@ -126,8 +133,8 @@ export default class InteriorState extends BaseState {
   }
 
   prepareModel(model) {
-    // 1. Mise à l'échelle : le modèle utilise environ 2 mm par unité, Three.js travaille en mètres
-    model.scale.setScalar(0.002);
+    // 1. Mise à l'échelle, propre à chaque modèle (1 = le modèle est déjà en mètres)
+    model.scale.setScalar(this.houseData.interiorScale ?? 1);
 
     // 2. Recentrage : centre du modèle en x/z = 0, sol posé à y = 0
     const box = new THREE.Box3().setFromObject(model);
@@ -136,7 +143,7 @@ export default class InteriorState extends BaseState {
     model.position.z -= center.z;
     model.position.y -= box.min.y;
 
-    // 3. Double face : évite les murs invisibles typiques des modèles SketchUp
+    // 3. Double face : évite les murs invisibles (fréquent avec les modèles SketchUp)
     model.traverse((child) => {
       if (child.isMesh) {
         const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -147,6 +154,8 @@ export default class InteriorState extends BaseState {
 
   // ---------- Collisions ----------
 
+  // Fusionne tous les objets du modèle en une seule géométrie
+  // et construit une structure de recherche rapide (BVH) dessus
   buildCollider() {
     this.model.updateMatrixWorld(true);
 
@@ -159,6 +168,7 @@ export default class InteriorState extends BaseState {
     this.collider = new THREE.Mesh(geometry); // jamais ajouté à la scène : invisible
   }
 
+  // Repousse le joueur hors des murs et des meubles
   resolveCollisions() {
     const position = this.camera.position;
     const radius = this.playerRadius;
@@ -201,6 +211,7 @@ export default class InteriorState extends BaseState {
 
   // ---------- Points d'intérêt ----------
 
+  // Calque HTML qui affiche les étiquettes par-dessus la 3D
   createLabelRenderer() {
     this.labelRenderer = new CSS2DRenderer();
     this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -208,6 +219,7 @@ export default class InteriorState extends BaseState {
     document.body.appendChild(this.labelRenderer.domElement);
   }
 
+  // Une étiquette cliquable par point d'intérêt du JSON
   createHotspots() {
     const hotspots = this.houseData.hotspots ?? [];
 
@@ -223,6 +235,7 @@ export default class InteriorState extends BaseState {
     });
   }
 
+  // Panneau d'information (caché au départ)
   createInfoPanel() {
     this.infoPanel = document.createElement('div');
     this.infoPanel.className = 'info-panel hidden';
@@ -244,9 +257,15 @@ export default class InteriorState extends BaseState {
     if (this.infoPanel) this.infoPanel.classList.add('hidden');
   }
 
+  // Outil de développement : affiche la position actuelle pour placer une étiquette ou le point de départ
   logPosition() {
     const p = this.camera.position;
-    console.log(`"position": [${p.x.toFixed(2)}, 1.2, ${p.z.toFixed(2)}]`);
+    const dir = this.camera.getWorldDirection(new THREE.Vector3());
+    console.log(`Étiquette → "position": [${p.x.toFixed(2)}, 1.2, ${p.z.toFixed(2)}]`);
+    console.log(
+      `Départ → "spawnPosition": [${p.x.toFixed(2)}, ${p.z.toFixed(2)}], ` +
+      `"spawnLookAt": [${(p.x + dir.x).toFixed(2)}, ${(p.z + dir.z).toFixed(2)}]`
+    );
   }
 
   // ---------- Mode 360° ----------
@@ -313,6 +332,11 @@ export default class InteriorState extends BaseState {
     this.toolbar = document.createElement('div');
     this.toolbar.className = 'interior-toolbar';
 
+    this.backButton = document.createElement('button');
+    this.backButton.className = 'toolbar-button toolbar-back';
+    this.backButton.textContent = '← Retour au quartier';
+    this.backButton.addEventListener('click', () => this.goBack());
+
     this.panoButton = document.createElement('button');
     this.panoButton.className = 'toolbar-button';
     this.panoButton.addEventListener('click', () => {
@@ -323,7 +347,7 @@ export default class InteriorState extends BaseState {
     this.hint = document.createElement('span');
     this.hint.className = 'toolbar-hint';
 
-    this.toolbar.append(this.panoButton, this.hint);
+    this.toolbar.append(this.backButton, this.panoButton, this.hint);
     document.body.appendChild(this.toolbar);
   }
 
@@ -340,6 +364,13 @@ export default class InteriorState extends BaseState {
     } else {
       this.hint.textContent = 'Cliquez dans la scène pour visiter · Cliquez sur une étiquette pour les détails';
     }
+  }
+
+  // Retour à la page d'accueil : exit() de cet état nettoiera tout automatiquement
+  goBack() {
+    if (this.isLeaving) return;
+    this.isLeaving = true;
+    this.app.stateManager.switchState(new LandingState(this.app));
   }
 
   // ---------- Contrôles ----------
@@ -370,6 +401,7 @@ export default class InteriorState extends BaseState {
     this.setKey(event.code, false);
   }
 
+  // Associe chaque touche physique à une direction (marche en AZERTY et en QWERTY)
   setKey(code, isPressed) {
     switch (code) {
       case 'KeyW':      // Z sur un clavier AZERTY
@@ -415,20 +447,19 @@ export default class InteriorState extends BaseState {
     if (this.labelRenderer) this.labelRenderer.render(this.scene, this.camera);
 
     if (!this.isReady) return;
-    if (!this.controls.isLocked) return;
+    if (!this.controls.isLocked) return; // on ne marche que quand la souris est verrouillée
 
-    const dt = Math.min(deltaTime, 0.05);
+    const dt = Math.min(deltaTime, 0.05); // évite de traverser un mur fin en un seul pas
 
     const direction = new THREE.Vector2(
       Number(this.keys.right) - Number(this.keys.left),
       Number(this.keys.forward) - Number(this.keys.backward)
     );
-    if (direction.lengthSq() === 0) return;
+    if (direction.lengthSq() === 0) return; // aucune touche enfoncée
 
-    direction.normalize();
+    direction.normalize(); // même vitesse en diagonale qu'en ligne droite
 
     const distance = this.walkSpeed * dt;
-
     this.controls.moveForward(direction.y * distance);
     this.controls.moveRight(direction.x * distance);
 

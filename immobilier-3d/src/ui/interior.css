@@ -91,3 +91,10 @@
   color: #fff;
   font-size: 13px;
 }
+.toolbar-back {
+  background: rgba(20, 30, 40, 0.85);
+}
+
+.toolbar-back:hover {
+  background: #2c3e50;
+}

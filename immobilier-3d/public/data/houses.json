@@ -5,6 +5,9 @@
     "price": "450 000 €",
     "exteriorModel": "/models/exterior_1.glb",
     "interiorModel": "/models/interior_1.glb",
+    "interiorScale": 0.002,
+    "spawnPosition": [0.9, -5.2],
+    "spawnLookAt": [0.9, 0],
     "position": [0, 0, 0],
     "hotspots": [
       {
