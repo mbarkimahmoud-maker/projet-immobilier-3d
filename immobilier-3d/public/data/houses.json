@@ -32,5 +32,121 @@
         "description": "Table pour six personnes, ouverte sur le séjour."
       }
     ]
+  },
+    {
+    "id": "house-2",
+    "name": "Maison 2",
+    "price": "620 000 €",
+    "exteriorModel": "/models/exterior_2.glb",
+    "interiorModel": "/models/interior_2.glb",
+    "interiorScale": 1,
+    "interiorFloorOffset": 1.88,
+    "spawnPosition": [3.2, 4.7],
+    "spawnLookAt": [-1.3, 2.7],
+    "position": [0, 0, 0],
+        "hotspots": [
+      {
+        "id": "salon",
+        "title": "Salon",
+        "position": [-2.8, 1.3, 3.0],
+        "area": "30 m²",
+        "description": "Grand salon sous double hauteur de plafond, avec canapé et fauteuils autour d'une table basse."
+      },
+      {
+        "id": "repas",
+        "title": "Coin repas",
+        "position": [-3.3, 1.4, -1.7],
+        "area": "15 m²",
+        "description": "Table pour huit personnes, à côté du salon."
+      },
+      {
+        "id": "detente",
+        "title": "Espace détente",
+        "position": [2.7, 1.4, -2.8],
+        "area": "20 m²",
+        "description": "Canapé d'angle et bibliothèque, sous la mezzanine."
+      },
+      {
+        "id": "mezzanine",
+        "title": "Mezzanine",
+        "position": [1.2, 3.4, 0.7],
+        "area": "45 m²",
+        "description": "Étage ouvert sur le salon, avec un espace salon supplémentaire.",
+        "teleport": {
+          "label": "Monter à la mezzanine",
+          "position": [2.98, 2.58, -2.23],
+          "lookAt": [-1.3, 1.1]
+        }
+      },
+      {
+        "id": "rez-de-chaussee",
+        "title": "Rez-de-chaussée",
+        "floor": 2.58,
+        "position": [2.0, 3.8, -3.2],
+        "description": "Revenir au niveau principal de la maison.",
+        "teleport": {
+          "label": "Redescendre",
+          "position": [3.2, 0, 4.7],
+          "lookAt": [-1.3, 2.7]
+        }
+      }
+    ]
+  },
+    {
+    "id": "house-3",
+    "name": "Maison 3",
+    "price": "780 000 €",
+    "exteriorModel": "/models/exterior_3.glb",
+    "interiorModel": "/models/interior_3.glb",
+    "interiorScale": 1,
+    "interiorFloorOffset": 0.72,
+    "spawnPosition": [5.0, -1.0],
+    "spawnLookAt": [-2.0, -0.5],
+    "position": [0, 0, 0],
+    "hotspots": [
+      {
+        "id": "salon",
+        "title": "Salon",
+        "position": [-6.5, 1.3, 4.0],
+        "area": "25 m²",
+        "description": "Salon avec grand canapé d'angle, dans un loft aux volumes généreux."
+      },
+      {
+        "id": "repas",
+        "title": "Salle à manger",
+        "position": [-2.5, 1.4, -0.5],
+        "area": "16 m²",
+        "description": "Table ovale pour six personnes, au cœur de l'espace de vie."
+      },
+      {
+        "id": "detente",
+        "title": "Coin détente",
+        "position": [1.5, 1.3, 0.5],
+        "area": "12 m²",
+        "description": "Espace détente ouvert sur la salle à manger."
+      },
+      {
+        "id": "escalier",
+        "title": "Escalier",
+        "position": [2.6, 1.2, -3.6],
+        "description": "Escalier menant à l'étage, aménagé en espace de travail."
+      },
+      {
+        "id": "bureau",
+        "title": "Bureau",
+        "floor": 2.59,
+        "position": [-3.3, 3.9, -2.0],
+        "area": "18 m²",
+        "description": "Espace bureau avec fauteuils, idéal pour le télétravail."
+      },
+      {
+        "id": "reunion",
+        "title": "Espace réunion",
+        "floor": 2.59,
+        "position": [3.6, 3.9, 4.0],
+        "area": "22 m²",
+        "description": "Table ronde pour se réunir ou travailler à plusieurs."
+      }
+    ]
   }
 ]
