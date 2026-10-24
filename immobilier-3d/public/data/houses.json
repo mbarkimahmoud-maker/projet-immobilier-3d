@@ -1,11 +1,52 @@
 [
   {
     "id": "house-1",
-    "name": "Maison Test",
-    "price": "450 000 €",
+    "name": "Villa Gauche 1",
+    "price": "350 000 €",
     "exteriorModel": "/models/exterior_1.glb",
     "interiorModel": "/models/interior_1.glb",
-    "position": [0, 0, 0],
-    "hotspots": []
+    "position": [-25, 0, -15],
+    "rotationY": 1.57,
+    "scale": 0.5
+  },
+  {
+    "id": "house-2",
+    "name": "Villa Gauche 2",
+    "price": "420 000 €",
+    "exteriorModel": "/models/exterior_2.glb",
+    "interiorModel": "/models/interior_2.glb",
+    "position": [-25, 0, 18],
+    "rotationY": 1.57,
+    "scale": 0.009
+  },
+  {
+    "id": "house-3",
+    "name": "Villa Gauche 3",
+    "price": "380 000 €",
+    "exteriorModel": "/models/exterior_3.glb",
+    "interiorModel": "/models/interior_3.glb",
+    "position": [-25, 0, 40],
+    "rotationY": 1.57,
+    "scale": 0.0007
+  },
+  {
+    "id": "house-4",
+    "name": "Villa Droite 1",
+    "price": "410 000 €",
+    "exteriorModel": "/models/exterior_4.glb",
+    "interiorModel": "/models/interior_4.glb",
+    "position": [15, 0, -15],
+    "rotationY": -1.57,
+    "scale":0.5
+  },
+  {
+    "id": "house-6",
+    "name": "Villa Droite 3",
+    "price": "320 000 €",
+    "exteriorModel": "/models/exterior_5.glb",
+    "interiorModel": "/models/interior_5.glb",
+    "position": [15, 0, 15],
+    "rotationY": -1.57,
+    "scale": 0.5
   }
 ]
