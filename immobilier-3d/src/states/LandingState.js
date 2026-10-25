@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import BaseState from './BaseState.js';
+import InteriorState from './InteriorState.js'; // LIEN
 
 export default class LandingState extends BaseState {
     constructor(app) {
@@ -29,13 +30,21 @@ export default class LandingState extends BaseState {
         this.mouse = new THREE.Vector2(1, 1);
         this.hoveredHouse = null;
         
-        // NOUVEAU : Un tableau pour stocker TOUTES les maisons du quartier
+        // Un tableau pour stocker TOUTES les maisons du quartier (parc compris)
         this.houses = [];
+        // LIEN : seulement les maisons qu'on peut visiter (sans le parc)
+        this.clickableHouses = [];
+
+        // LIEN : pour distinguer un clic d'un glisser de caméra
+        this.pointerDownPosition = new THREE.Vector2();
+        this.isLeaving = false;
 
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onClick = this.onClick.bind(this);
+        this.onPointerDown = this.onPointerDown.bind(this); // LIEN
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('click', this.onClick);
+        window.addEventListener('pointerdown', this.onPointerDown); // LIEN
         // Pour le cycle jour/nuit
         this.sunAngle = 0;
     }
@@ -142,7 +151,6 @@ export default class LandingState extends BaseState {
 
             // --- CRÉATION D'UNE ALLÉE D'ARBRES LE LONG DE LA ROUTE ---
             
-            // Fonction utilitaire pour fabriquer un arbre rapidement
             // Fonction améliorée pour fabriquer un bel arbre en 3D
             const createTree = (x, z) => {
                 const treeGroup = new THREE.Group();
@@ -178,7 +186,7 @@ export default class LandingState extends BaseState {
             };
             // Boucle pour aligner des arbres tout le long de la route (à gauche et à droite)
             for (let z = -45; z <= 45; z += 10) {
-                // On évite de placer un arbre exactement là où il y a le feu tricolore ou le passage piéton si on veut
+                // On évite de placer un arbre exactement là où il y a le feu tricolore ou le passage piéton
                 if (Math.abs(z) > 6) { 
                     // Arbre côté gauche (derrière les rails)
                     const leftTree = createTree(-8, z);
@@ -202,8 +210,7 @@ export default class LandingState extends BaseState {
             ground.position.y = -0.02; // Juste en dessous de la route (-0.01) pour éviter les conflits d'affichage
             this.scene.add(ground);
 
-            // 2. --- BOUCLE DES MAISONS ---
-            // 2. --- BOUCLE DES MAISONS ---
+            // --- BOUCLE DES MAISONS ---
             for (const data of housesData) {
                 const gltf = await loader.loadAsync(data.exteriorModel);
                 const houseMesh = gltf.scene;
@@ -237,9 +244,14 @@ export default class LandingState extends BaseState {
 
                 this.scene.add(houseGroup);
                 this.houses.push(houseGroup);
+
+                // LIEN : le parc est affiché mais n'est pas cliquable
+                if (data.type !== 'park') {
+                    this.clickableHouses.push(houseGroup);
+                }
             }
             
-            console.log("Quartier chargé avec", this.houses.length, "maison(s) et une route !");
+            console.log("Quartier chargé avec", this.houses.length, "élément(s) et une route !");
 
         } catch (error) {
             console.error("Erreur lors de la création du quartier :", error);
@@ -251,13 +263,26 @@ export default class LandingState extends BaseState {
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
-    onClick() {
-        if (this.hoveredHouse) {
+    // LIEN : on retient où le bouton de la souris a été enfoncé
+    onPointerDown(event) {
+        this.pointerDownPosition.set(event.clientX, event.clientY);
+    }
+
+    onClick(event) {
+        // LIEN : si la souris a bougé entre l'appui et le relâchement, c'était un glisser de caméra
+        const moved = this.pointerDownPosition.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
+        if (moved > 5) return;
+
+        if (this.hoveredHouse && !this.isLeaving) {
             // On peut maintenant lire les données de la maison cliquée !
             const data = this.hoveredHouse.userData;
             console.log(`Maison cliquée : ${data.name} - Prix : ${data.price}`);
-            
-            // Prochaine étape : this.app.stateManager.switchState(new InteriorState(this.app, data));
+
+            // LIEN : passage à la visite intérieure
+            if (data.interiorModel) {
+                this.isLeaving = true;
+                this.app.stateManager.switchState(new InteriorState(this.app, data));
+            }
         }
     }
 
@@ -293,8 +318,8 @@ export default class LandingState extends BaseState {
         
         this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        // NOUVEAU : On vérifie les collisions avec TOUTES les maisons du tableau
-        const intersects = this.raycaster.intersectObjects(this.houses, true);
+        // LIEN : on ne teste que les maisons visitables (le parc ne se soulève pas)
+        const intersects = this.raycaster.intersectObjects(this.clickableHouses, true);
 
         if (intersects.length > 0) {
             // On remonte l'arborescence pour trouver le "Group" principal
@@ -325,17 +350,25 @@ export default class LandingState extends BaseState {
     exit() {
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('click', this.onClick);
-        
-        // NOUVEAU : Nettoyage de la mémoire quand on quitte le quartier
-        this.houses.forEach(house => {
-            this.scene.remove(house);
-            house.traverse((child) => {
-                if (child.isMesh) {
-                    child.geometry.dispose();
-                    if (child.material.dispose) child.material.dispose();
-                }
-            });
+        window.removeEventListener('pointerdown', this.onPointerDown); // LIEN
+
+        document.body.style.cursor = 'default'; // LIEN : sinon la main reste affichée dans l'intérieur
+        this.controls.dispose();                 // LIEN : la caméra du quartier ne réagit plus à la souris
+
+        // LIEN : libère la mémoire de TOUTE la scène (maisons, route, arbres, sol, textures)
+        this.scene.traverse((child) => {
+            if (child.isMesh) {
+                child.geometry.dispose();
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach((m) => {
+                    for (const key in m) {
+                        if (m[key] && m[key].isTexture) m[key].dispose();
+                    }
+                    m.dispose();
+                });
+            }
         });
         this.houses = [];
+        this.clickableHouses = [];
     }
 }

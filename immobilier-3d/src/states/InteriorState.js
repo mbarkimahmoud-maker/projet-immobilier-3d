@@ -91,7 +91,6 @@ export default class InteriorState extends BaseState {
         // Hauteur de marche maximale propre à chaque maison (escaliers plus raides)
     this.maxStepUp = this.houseData.maxStepUp ?? 0.2;
 
-    this.scene.background = new THREE.Color(0xdde3ea);
 
     // Lumières
     const ambient = new THREE.HemisphereLight(0xffffff, 0x8d8d8d, 2);
@@ -116,6 +115,7 @@ export default class InteriorState extends BaseState {
     }
 
     this.buildCollider();
+    this.createSurroundings(); // ciel, herbe et arbres visibles par les fenêtres
 
     // Position de départ et direction du regard, propres à chaque maison
     const [startX, startZ] = this.houseData.spawnPosition ?? [0, 0];
@@ -163,6 +163,73 @@ export default class InteriorState extends BaseState {
         materials.forEach((m) => { m.side = THREE.DoubleSide; });
       }
     });
+  }
+
+    // Décor extérieur : ciel en dégradé, sol vert et anneau d'arbres autour de la maison
+  createSurroundings() {
+    // 1. Ciel : une petite image en dégradé, enroulée tout autour de la scène
+    const canvas = document.createElement('canvas');
+    canvas.width = 2;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+    gradient.addColorStop(0, '#3d7cc9');    // haut du ciel, bleu profond
+    gradient.addColorStop(0.48, '#bfe1f7'); // horizon, bleu très clair
+    gradient.addColorStop(0.52, '#6b8f4e'); // sous l'horizon, vert
+    gradient.addColorStop(1, '#4f7a3a');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 2, 256);
+
+    const skyTexture = new THREE.CanvasTexture(canvas);
+    skyTexture.mapping = THREE.EquirectangularReflectionMapping;
+    skyTexture.colorSpace = THREE.SRGBColorSpace;
+    this.scene.background = skyTexture;
+
+    // 2. Sol vert, juste sous le plancher de la maison
+    const ground = new THREE.Mesh(
+      new THREE.CircleGeometry(300, 64),
+      new THREE.MeshStandardMaterial({ color: 0x4f7a3a, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.05;
+    this.scene.add(ground);
+
+    // 3. Arbres en anneau autour de la maison (même style que ceux du quartier)
+    const size = new THREE.Box3().setFromObject(this.model).getSize(new THREE.Vector3());
+    const baseRadius = Math.max(size.x, size.z) / 2 + 8; // 8 m au-delà des murs
+
+    // Géométries et matériaux partagés par tous les arbres (plus léger)
+    const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
+    const leavesMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8 });
+    const leavesGeos = [
+      { geo: new THREE.SphereGeometry(1.5, 8, 8), y: 2.5 },
+      { geo: new THREE.SphereGeometry(1.2, 8, 8), y: 3.5 },
+      { geo: new THREE.SphereGeometry(0.8, 8, 8), y: 4.3 }
+    ];
+
+    const treeCount = 32;
+    for (let i = 0; i < treeCount; i++) {
+      const tree = new THREE.Group();
+
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.position.y = 1.1;
+      tree.add(trunk);
+
+      leavesGeos.forEach(({ geo, y }) => {
+        const leaves = new THREE.Mesh(geo, leavesMat);
+        leaves.position.y = y;
+        tree.add(leaves);
+      });
+
+      // Répartis en cercle, sur trois rangées, avec des tailles un peu différentes
+      const angle = (i / treeCount) * Math.PI * 2;
+      const radius = baseRadius + (i % 3) * 5;
+      tree.position.set(Math.cos(angle) * radius, -0.05, Math.sin(angle) * radius);
+      tree.scale.setScalar(1 + (i % 4) * 0.25);
+
+      this.scene.add(tree);
+    }
   }
 
   // ---------- Collisions, sol et étages ----------
@@ -563,6 +630,8 @@ export default class InteriorState extends BaseState {
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
 
+        // Libère aussi la texture du ciel
+    if (this.scene.background && this.scene.background.isTexture) this.scene.background.dispose();
     if (this.collider) this.collider.geometry.dispose();
 
     // Libère la mémoire GPU (géométries, matériaux, textures)

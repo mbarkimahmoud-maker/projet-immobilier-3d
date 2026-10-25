@@ -4,34 +4,57 @@
     "name": "Villa Gauche 1",
     "price": "350 000 €",
     "exteriorModel": "/models/exterior_1.glb",
-    "interiorModel": "/models/interior_1.glb",
     "position": [-25, 0, -15],
     "rotationY": 1.57,
     "scale": 0.5,
-    "interiorScale": 0.002,
-    "spawnPosition": [0.9, -5.2],
-    "spawnLookAt": [0.9, 0],
+    "interiorModel": "/models/interior_3.glb",
+    "interiorScale": 1,
+    "interiorFloorOffset": 0.72,
+    "spawnPosition": [5.0, -1.0],
+    "spawnLookAt": [-2.0, -0.5],
     "hotspots": [
-      {
-        "id": "entree",
-        "title": "Entrée",
-        "position": [0.9, 2.0, -4.0],
-        "area": "6 m²",
-        "description": "Couloir d'entrée lumineux menant directement à la pièce de vie."
-      },
       {
         "id": "salon",
         "title": "Salon",
-        "position": [-1.1, 1.2, 0.15],
-        "area": "28 m²",
-        "description": "Grand salon ouvert avec canapé d'angle arrondi et espace TV."
+        "position": [-6.5, 1.3, 4.0],
+        "area": "25 m²",
+        "description": "Salon avec grand canapé d'angle, dans un loft aux volumes généreux."
       },
       {
         "id": "repas",
-        "title": "Coin repas",
-        "position": [3.2, 1.4, 1.55],
+        "title": "Salle à manger",
+        "position": [-2.5, 1.4, -0.5],
+        "area": "16 m²",
+        "description": "Table ovale pour six personnes, au cœur de l'espace de vie."
+      },
+      {
+        "id": "detente",
+        "title": "Coin détente",
+        "position": [1.5, 1.3, 0.5],
         "area": "12 m²",
-        "description": "Table pour six personnes, ouverte sur le séjour."
+        "description": "Espace détente ouvert sur la salle à manger."
+      },
+      {
+        "id": "escalier",
+        "title": "Escalier",
+        "position": [2.6, 1.2, -3.6],
+        "description": "Escalier menant à l'étage, aménagé en espace de travail."
+      },
+      {
+        "id": "bureau",
+        "title": "Bureau",
+        "floor": 2.59,
+        "position": [-3.3, 3.9, -2.0],
+        "area": "18 m²",
+        "description": "Espace bureau avec fauteuils, idéal pour le télétravail."
+      },
+      {
+        "id": "reunion",
+        "title": "Espace réunion",
+        "floor": 2.59,
+        "position": [3.6, 3.9, 4.0],
+        "area": "22 m²",
+        "description": "Table ronde pour se réunir ou travailler à plusieurs."
       }
     ]
   },
@@ -40,10 +63,10 @@
     "name": "Villa Gauche 2",
     "price": "420 000 €",
     "exteriorModel": "/models/exterior_2.glb",
-    "interiorModel": "/models/interior_2.glb",
     "position": [-25, 0, 18],
     "rotationY": 1.57,
     "scale": 0.009,
+    "interiorModel": "/models/interior_2.glb",
     "interiorScale": 1,
     "interiorFloorOffset": 1.88,
     "spawnPosition": [3.2, 4.7],
@@ -101,69 +124,10 @@
     "name": "Villa Gauche 3",
     "price": "380 000 €",
     "exteriorModel": "/models/exterior_3.glb",
-    "interiorModel": "/models/interior_3.glb",
     "position": [-25, 0, 40],
     "rotationY": 1.57,
     "scale": 0.0007,
-    "interiorScale": 1,
-    "interiorFloorOffset": 0.72,
-    "spawnPosition": [5.0, -1.0],
-    "spawnLookAt": [-2.0, -0.5],
-    "hotspots": [
-      {
-        "id": "salon",
-        "title": "Salon",
-        "position": [-6.5, 1.3, 4.0],
-        "area": "25 m²",
-        "description": "Salon avec grand canapé d'angle, dans un loft aux volumes généreux."
-      },
-      {
-        "id": "repas",
-        "title": "Salle à manger",
-        "position": [-2.5, 1.4, -0.5],
-        "area": "16 m²",
-        "description": "Table ovale pour six personnes, au cœur de l'espace de vie."
-      },
-      {
-        "id": "detente",
-        "title": "Coin détente",
-        "position": [1.5, 1.3, 0.5],
-        "area": "12 m²",
-        "description": "Espace détente ouvert sur la salle à manger."
-      },
-      {
-        "id": "escalier",
-        "title": "Escalier",
-        "position": [2.6, 1.2, -3.6],
-        "description": "Escalier menant à l'étage, aménagé en espace de travail."
-      },
-      {
-        "id": "bureau",
-        "title": "Bureau",
-        "floor": 2.59,
-        "position": [-3.3, 3.9, -2.0],
-        "area": "18 m²",
-        "description": "Espace bureau avec fauteuils, idéal pour le télétravail."
-      },
-      {
-        "id": "reunion",
-        "title": "Espace réunion",
-        "floor": 2.59,
-        "position": [3.6, 3.9, 4.0],
-        "area": "22 m²",
-        "description": "Table ronde pour se réunir ou travailler à plusieurs."
-      }
-    ]
-  },
-  {
-    "id": "house-4",
-    "name": "Villa Droite 1",
-    "price": "410 000 €",
-    "exteriorModel": "/models/exterior_4.glb",
     "interiorModel": "/models/interior_4.glb",
-    "position": [15, 0, -15],
-    "rotationY": -1.57,
-    "scale": 0.5,
     "interiorScale": 1,
     "interiorFloorOffset": 0.125,
     "maxStepUp": 0.32,
@@ -242,9 +206,45 @@
     ]
   },
   {
-    "id": "house-6",
-    "name": "Villa Droite 3",
-    "price": "320 000 €",
+    "id": "house-4",
+    "name": "Villa Droite 1",
+    "price": "410 000 €",
+    "exteriorModel": "/models/exterior_4.glb",
+    "position": [15, 0, -15],
+    "rotationY": -1.57,
+    "scale": 0.5,
+    "interiorModel": "/models/interior_1.glb",
+    "interiorScale": 0.002,
+    "spawnPosition": [0.9, -5.2],
+    "spawnLookAt": [0.9, 0],
+    "hotspots": [
+      {
+        "id": "entree",
+        "title": "Entrée",
+        "position": [0.9, 2.0, -4.0],
+        "area": "6 m²",
+        "description": "Couloir d'entrée lumineux menant directement à la pièce de vie."
+      },
+      {
+        "id": "salon",
+        "title": "Salon",
+        "position": [-1.1, 1.2, 0.15],
+        "area": "28 m²",
+        "description": "Grand salon ouvert avec canapé d'angle arrondi et espace TV."
+      },
+      {
+        "id": "repas",
+        "title": "Coin repas",
+        "position": [3.2, 1.4, 1.55],
+        "area": "12 m²",
+        "description": "Table pour six personnes, ouverte sur le séjour."
+      }
+    ]
+  },
+  {
+    "id": "park",
+    "name": "Parc",
+    "type": "park",
     "exteriorModel": "/models/exterior_5.glb",
     "position": [15, 0, 15],
     "rotationY": -1.57,
