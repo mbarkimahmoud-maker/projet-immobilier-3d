@@ -88,6 +88,8 @@ export default class InteriorState extends BaseState {
         console.error('Impossible de lire houses.json :', error);
       }
     }
+        // Hauteur de marche maximale propre à chaque maison (escaliers plus raides)
+    this.maxStepUp = this.houseData.maxStepUp ?? 0.2;
 
     this.scene.background = new THREE.Color(0xdde3ea);
 
