@@ -1,14 +1,16 @@
 [
   {
     "id": "house-1",
-    "name": "Maison Test",
-    "price": "450 000 €",
+    "name": "Villa Gauche 1",
+    "price": "350 000 €",
     "exteriorModel": "/models/exterior_1.glb",
     "interiorModel": "/models/interior_1.glb",
+    "position": [-25, 0, -15],
+    "rotationY": 1.57,
+    "scale": 0.5,
     "interiorScale": 0.002,
     "spawnPosition": [0.9, -5.2],
     "spawnLookAt": [0.9, 0],
-    "position": [0, 0, 0],
     "hotspots": [
       {
         "id": "entree",
@@ -33,18 +35,20 @@
       }
     ]
   },
-    {
+  {
     "id": "house-2",
-    "name": "Maison 2",
-    "price": "620 000 €",
+    "name": "Villa Gauche 2",
+    "price": "420 000 €",
     "exteriorModel": "/models/exterior_2.glb",
     "interiorModel": "/models/interior_2.glb",
+    "position": [-25, 0, 18],
+    "rotationY": 1.57,
+    "scale": 0.009,
     "interiorScale": 1,
     "interiorFloorOffset": 1.88,
     "spawnPosition": [3.2, 4.7],
     "spawnLookAt": [-1.3, 2.7],
-    "position": [0, 0, 0],
-        "hotspots": [
+    "hotspots": [
       {
         "id": "salon",
         "title": "Salon",
@@ -92,17 +96,19 @@
       }
     ]
   },
-    {
+  {
     "id": "house-3",
-    "name": "Maison 3",
-    "price": "780 000 €",
+    "name": "Villa Gauche 3",
+    "price": "380 000 €",
     "exteriorModel": "/models/exterior_3.glb",
     "interiorModel": "/models/interior_3.glb",
+    "position": [-25, 0, 40],
+    "rotationY": 1.57,
+    "scale": 0.0007,
     "interiorScale": 1,
     "interiorFloorOffset": 0.72,
     "spawnPosition": [5.0, -1.0],
     "spawnLookAt": [-2.0, -0.5],
-    "position": [0, 0, 0],
     "hotspots": [
       {
         "id": "salon",
@@ -149,18 +155,20 @@
       }
     ]
   },
-    {
+  {
     "id": "house-4",
-    "name": "Maison 4",
-    "price": "950 000 €",
+    "name": "Villa Droite 1",
+    "price": "410 000 €",
     "exteriorModel": "/models/exterior_4.glb",
     "interiorModel": "/models/interior_4.glb",
+    "position": [15, 0, -15],
+    "rotationY": -1.57,
+    "scale": 0.5,
     "interiorScale": 1,
     "interiorFloorOffset": 0.125,
     "maxStepUp": 0.32,
     "spawnPosition": [4.5, 6.0],
     "spawnLookAt": [-1.0, 1.5],
-    "position": [0, 0, 0],
     "hotspots": [
       {
         "id": "salon",
@@ -232,5 +240,14 @@
         "teleport": { "label": "Descendre à l'étage", "position": [-2.2, 3.9, -0.9], "lookAt": [3.0, -5.0] }
       }
     ]
+  },
+  {
+    "id": "house-6",
+    "name": "Villa Droite 3",
+    "price": "320 000 €",
+    "exteriorModel": "/models/exterior_5.glb",
+    "position": [15, 0, 15],
+    "rotationY": -1.57,
+    "scale": 0.5
   }
 ]
