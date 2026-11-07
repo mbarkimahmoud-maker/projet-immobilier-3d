@@ -14,7 +14,7 @@ export default class App {
         // Rendu plus réaliste : couleurs douces, zones claires qui ne "brûlent" plus
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.0;
+        this.renderer.toneMappingExposure = 0.85;
 
         // Ombres douces (on les utilisera dans le quartier à l'étape 6)
         this.renderer.shadowMap.enabled = true;

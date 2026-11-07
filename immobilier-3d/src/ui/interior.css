@@ -1,4 +1,4 @@
-/* Calque transparent qui contient les étiquettes, par-dessus la 3D */
+/* ============ Calque des étiquettes ============ */
 .label-layer {
   position: fixed;
   top: 0;
@@ -6,98 +6,169 @@
   pointer-events: none; /* les clics passent à travers, sauf sur les étiquettes */
 }
 
+/* ============ Étiquettes des points d'intérêt ============ */
 .hotspot {
   pointer-events: auto;
-  padding: 6px 14px;
-  border: none;
-  border-radius: 999px;
-  background: rgba(20, 30, 40, 0.8);
-  color: #fff;
-  font: 600 14px system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  background: var(--glass-dark);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--color-text-light);
+  font: 600 13px var(--font-ui);
   cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, background 0.2s;
+}
+
+/* Petit point lumineux qui pulse devant le texte */
+.hotspot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 0 rgba(200, 107, 60, 0.7);
+  animation: hotspot-pulse 2s infinite;
 }
 
 .hotspot:hover {
-  background: #e67e22;
+  transform: scale(1.08);
+  background: var(--color-accent);
 }
 
+.hotspot:hover::before {
+  background: var(--color-text-light);
+}
+
+@keyframes hotspot-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(200, 107, 60, 0.7); }
+  70%  { box-shadow: 0 0 0 10px rgba(200, 107, 60, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(200, 107, 60, 0); }
+}
+
+/* ============ Panneau d'information ============ */
 .info-panel {
   position: fixed;
   top: 50%;
-  right: 24px;
+  right: 28px;
   transform: translateY(-50%);
-  width: 300px;
-  padding: 20px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #222;
-  font-family: system-ui, sans-serif;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  width: 320px;
+  padding: 26px 24px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius);
+  background: var(--glass-light);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--color-text-dark);
+  font-family: var(--font-ui);
+  box-shadow: var(--shadow);
   z-index: 10;
+  transition: opacity 0.3s, transform 0.3s;
 }
 
+/* Caché : transparent et légèrement décalé, pour qu'il "glisse" en apparaissant */
 .info-panel.hidden {
-  display: none;
+  opacity: 0;
+  transform: translate(24px, -50%);
+  pointer-events: none;
 }
 
 .info-panel h2 {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
+  font-family: var(--font-title);
+  font-size: 24px;
+}
+
+.info-panel p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.info-panel .info-area {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(200, 107, 60, 0.12);
+  color: var(--color-accent);
+  font-weight: 600;
 }
 
 .info-close {
   position: absolute;
-  top: 8px;
-  right: 12px;
+  top: 12px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
   border: none;
-  background: none;
-  font-size: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--color-text-dark);
+  font-size: 18px;
   cursor: pointer;
 }
 
-.info-area {
-  font-weight: 600;
-  color: #e67e22;
+.info-close:hover {
+  background: rgba(0, 0, 0, 0.12);
 }
-/* Barre d'aide et bouton 360° */
+
+.info-teleport {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* ============ Barre d'outils en bas ============ */
 .interior-toolbar {
   position: fixed;
-  left: 24px;
+  left: 50%;
   bottom: 24px;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  background: var(--glass-dark);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow);
   z-index: 10;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-ui);
 }
 
 .toolbar-button {
-  padding: 10px 18px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 999px;
-  background: #e67e22;
-  color: #fff;
-  font: 600 14px system-ui, sans-serif;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-text-light);
+  font: 600 14px var(--font-ui);
   cursor: pointer;
+  transition: background 0.2s;
 }
 
 .toolbar-button:hover {
-  background: #cf6d17;
+  background: var(--color-accent-hover);
 }
 
-.toolbar-hint {
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: rgba(20, 30, 40, 0.75);
-  color: #fff;
-  font-size: 13px;
-}
 .toolbar-back {
-  background: rgba(20, 30, 40, 0.85);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .toolbar-back:hover {
-  background: #2c3e50;
+  background: rgba(255, 255, 255, 0.22);
 }
-.info-teleport {
-  margin-top: 8px;
+
+.toolbar-hint {
+  padding: 0 14px 0 6px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
 }

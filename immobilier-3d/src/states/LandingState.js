@@ -40,6 +40,7 @@ export default class LandingState extends BaseState {
         this.isLeaving = false;
 
         this.onMouseMove = this.onMouseMove.bind(this);
+        this.header = null; // en-tête avec le nom de l'agence
         this.onClick = this.onClick.bind(this);
         this.onPointerDown = this.onPointerDown.bind(this); // LIEN
         window.addEventListener('mousemove', this.onMouseMove);
@@ -51,6 +52,7 @@ export default class LandingState extends BaseState {
 
     async enter() {
         console.log("Construction du quartier...");
+        this.createHeader();
         const loader = new GLTFLoader();
 
         try {
@@ -258,6 +260,23 @@ export default class LandingState extends BaseState {
         }
     }
 
+        // En-tête : nom de l'agence et aide, par-dessus le quartier
+    createHeader() {
+        this.header = document.createElement('header');
+        this.header.className = 'site-header';
+        this.header.innerHTML = `
+            <div class="brand">
+                <span class="brand-logo">⌂</span>
+                <div>
+                    <h1 class="brand-name">Domus 3D</h1>
+                    <p class="brand-tagline">Visitez nos maisons comme si vous y étiez</p>
+                </div>
+            </div>
+            <p class="site-hint">Glissez pour explorer le quartier · Cliquez sur une maison pour la visiter</p>
+        `;
+        document.body.appendChild(this.header);
+    }
+
     onMouseMove(event) {
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -348,6 +367,7 @@ export default class LandingState extends BaseState {
     }
 
     exit() {
+        if (this.header) this.header.remove();
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('click', this.onClick);
         window.removeEventListener('pointerdown', this.onPointerDown); // LIEN
