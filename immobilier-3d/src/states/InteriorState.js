@@ -8,6 +8,7 @@ import { MeshBVH, StaticGeometryGenerator } from 'three-mesh-bvh';
 import BaseState from './BaseState.js';
 import LandingState from './LandingState.js';
 import '../ui/interior.css';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const DOWN = new THREE.Vector3(0, -1, 0);
 
@@ -92,11 +93,17 @@ export default class InteriorState extends BaseState {
     this.maxStepUp = this.houseData.maxStepUp ?? 0.2;
 
 
-    // Lumières
-    const ambient = new THREE.HemisphereLight(0xffffff, 0x8d8d8d, 2);
+    // Éclairage d'environnement : une lumière de studio qui donne reflets et nuances aux matériaux
+    const pmrem = new THREE.PMREMGenerator(this.app.renderer);
+    this.envTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    this.scene.environment = this.envTexture;
+
+    // Lumières plus discrètes qu'avant, puisque l'environnement éclaire déjà
+    const ambient = new THREE.HemisphereLight(0xffffff, 0x8d8d8d, 0.6);
     this.scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+    const sun = new THREE.DirectionalLight(0xfff4e0, 1.0); // lumière légèrement chaude
     sun.position.set(5, 10, 3);
     this.scene.add(sun);
 
@@ -631,6 +638,7 @@ export default class InteriorState extends BaseState {
     document.removeEventListener('keyup', this.onKeyUp);
 
         // Libère aussi la texture du ciel
+    if (this.envTexture) this.envTexture.dispose();
     if (this.scene.background && this.scene.background.isTexture) this.scene.background.dispose();
     if (this.collider) this.collider.geometry.dispose();
 
