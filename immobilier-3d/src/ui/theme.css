@@ -85,3 +85,71 @@ body {
   -webkit-backdrop-filter: var(--glass-blur);
   font-size: 13px;
 }
+/* ============ Fiche flottante au survol d'une maison ============ */
+.landing-label-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.house-card {
+  pointer-events: none;
+  min-width: 190px;
+  padding: 14px 18px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-dark);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--color-text-light);
+  font-family: var(--font-ui);
+  text-align: center;
+  box-shadow: var(--shadow);
+  animation: card-appear 0.25s ease-out;
+}
+
+/* Petite pointe sous la fiche, qui désigne la maison */
+.house-card::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  border-width: 8px 8px 0;
+  border-style: solid;
+  border-color: var(--glass-dark) transparent transparent;
+}
+
+.house-card h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-title);
+  font-size: 19px;
+}
+
+.house-card-price {
+  margin: 0;
+  color: #f0a477; /* terracotta éclairci, plus lisible sur fond sombre */
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.house-card-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.house-card-cta {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

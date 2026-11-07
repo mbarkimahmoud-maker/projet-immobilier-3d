@@ -1,8 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';  // SURVOL
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';          // SURVOL
+import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';        // SURVOL
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';          // SURVOL
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js'; // SURVOL
 import BaseState from './BaseState.js';
-import InteriorState from './InteriorState.js'; // LIEN
+import InteriorState from './InteriorState.js';
 
 export default class LandingState extends BaseState {
     constructor(app) {
@@ -30,22 +35,31 @@ export default class LandingState extends BaseState {
         this.mouse = new THREE.Vector2(1, 1);
         this.hoveredHouse = null;
         
-        // Un tableau pour stocker TOUTES les maisons du quartier (parc compris)
+        // Toutes les maisons du quartier (parc compris), et seulement celles qu'on peut visiter
         this.houses = [];
-        // LIEN : seulement les maisons qu'on peut visiter (sans le parc)
         this.clickableHouses = [];
 
-        // LIEN : pour distinguer un clic d'un glisser de caméra
+        // Pour distinguer un clic d'un glisser de caméra
         this.pointerDownPosition = new THREE.Vector2();
         this.isLeaving = false;
 
-        this.onMouseMove = this.onMouseMove.bind(this);
         this.header = null; // en-tête avec le nom de l'agence
+
+        // SURVOL : contour lumineux et fiche flottante
+        this.composer = null;
+        this.outlinePass = null;
+        this.labelRenderer = null;
+        this.houseCard = null;        // la fiche (un seul objet, déplacé d'une maison à l'autre)
+        this.houseTops = new Map();   // hauteur du toit de chaque maison, pour placer la fiche au-dessus
+
+        this.onMouseMove = this.onMouseMove.bind(this);
         this.onClick = this.onClick.bind(this);
-        this.onPointerDown = this.onPointerDown.bind(this); // LIEN
+        this.onPointerDown = this.onPointerDown.bind(this);
+        this.onResize = this.onResize.bind(this); // SURVOL
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('click', this.onClick);
-        window.addEventListener('pointerdown', this.onPointerDown); // LIEN
+        window.addEventListener('pointerdown', this.onPointerDown);
+        window.addEventListener('resize', this.onResize); // SURVOL
         // Pour le cycle jour/nuit
         this.sunAngle = 0;
     }
@@ -53,13 +67,16 @@ export default class LandingState extends BaseState {
     async enter() {
         console.log("Construction du quartier...");
         this.createHeader();
+        this.setupComposer();     // SURVOL
+        this.setupHouseCard();    // SURVOL
+
         const loader = new GLTFLoader();
 
         try {
             const response = await fetch('/data/houses.json');
             const housesData = await response.json();
 
-            // 2. --- CRÉATION DE LA ROUTE RÉALISTE (Inspirée de ton image) ---
+            // 2. --- CRÉATION DE LA ROUTE RÉALISTE ---
             const roadGroup = new THREE.Group();
 
             // A. L'asphalte principal (Gris très foncé, mat)
@@ -83,7 +100,7 @@ export default class LandingState extends BaseState {
             rightEdge.position.set(5.2, -0.008, 0);
             roadGroup.add(rightEdge);
 
-            // C. Ligne centrale discontinue (tous les 4 mètres)
+            // C. Ligne centrale discontinue
             for (let z = -45; z <= 45; z += 6) {
                 const centerDashGeo = new THREE.PlaneGeometry(0.3, 3);
                 const centerDash = new THREE.Mesh(centerDashGeo, edgeLineMat);
@@ -104,7 +121,7 @@ export default class LandingState extends BaseState {
             rightRail.position.set(6.2, 0.4, 0);
             roadGroup.add(rightRail);
 
-            // E. Ajout du passage piéton (zébras) au milieu de la rue
+            // E. Passage piéton (zébras) au milieu de la rue
             for (let zPos = -3; zPos <= 3; zPos += 2) {
                 const stripeGeo = new THREE.PlaneGeometry(10, 0.8);
                 const stripe = new THREE.Mesh(stripeGeo, edgeLineMat);
@@ -113,25 +130,22 @@ export default class LandingState extends BaseState {
                 roadGroup.add(stripe);
             }
 
-            // F. Ajout d'un Vrai Feu Tricolore au bord de la route
+            // F. Feu tricolore au bord de la route
             const poleMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.5 });
             
-            // Le mât vertical
             const poleGeo = new THREE.CylinderGeometry(0.1, 0.1, 5, 8);
             const pole = new THREE.Mesh(poleGeo, poleMat);
             pole.position.set(6.5, 2.5, -5);
             roadGroup.add(pole);
 
-            // Le boîtier du feu (bloc noir)
             const boxGeo = new THREE.BoxGeometry(0.6, 1.5, 0.5);
             const boxMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
             const trafficBox = new THREE.Mesh(boxGeo, boxMat);
             trafficBox.position.set(6.5, 4.2, -5);
             roadGroup.add(trafficBox);
 
-            // Les lumières du feu (Rouge allumé, Orange éteint, Vert éteint)
-            const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Rouge vif
-            const offLightMat = new THREE.MeshBasicMaterial({ color: 0x440000 }); // Éteint sombre
+            const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const offLightMat = new THREE.MeshBasicMaterial({ color: 0x440000 });
             
             const lightGeo = new THREE.SphereGeometry(0.2, 16, 16);
             
@@ -147,91 +161,76 @@ export default class LandingState extends BaseState {
             greenLight.position.set(6.5, 3.8, -4.72);
             roadGroup.add(greenLight);
 
-            // On ajoute toute la route structurée à la scène
             this.scene.add(roadGroup);
 
-
-            // --- CRÉATION D'UNE ALLÉE D'ARBRES LE LONG DE LA ROUTE ---
-            
-            // Fonction améliorée pour fabriquer un bel arbre en 3D
+            // --- ALLÉE D'ARBRES LE LONG DE LA ROUTE ---
             const createTree = (x, z) => {
                 const treeGroup = new THREE.Group();
 
-                // 1. Le tronc (un peu plus texturé et effilé)
                 const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.2, 8);
                 const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
                 const trunk = new THREE.Mesh(trunkGeo, trunkMat);
                 trunk.position.y = 1.1;
                 treeGroup.add(trunk);
 
-                // 2. Le feuillage multi-couches (empilement de sphères pour un effet dense)
                 const leavesMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8 });
 
-                // Couche inférieure (la plus large)
                 const leaves1 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), leavesMat);
                 leaves1.position.y = 2.5;
                 treeGroup.add(leaves1);
 
-                // Couche intermédiaire
                 const leaves2 = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8), leavesMat);
                 leaves2.position.y = 3.5;
                 treeGroup.add(leaves2);
 
-                // Couche supérieure (la pointe)
                 const leaves3 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), leavesMat);
                 leaves3.position.y = 4.3;
                 treeGroup.add(leaves3);
 
-                // Position globale de l'arbre dans le quartier
                 treeGroup.position.set(x, 0, z);
                 return treeGroup;
             };
-            // Boucle pour aligner des arbres tout le long de la route (à gauche et à droite)
             for (let z = -45; z <= 45; z += 10) {
-                // On évite de placer un arbre exactement là où il y a le feu tricolore ou le passage piéton
                 if (Math.abs(z) > 6) { 
-                    // Arbre côté gauche (derrière les rails)
-                    const leftTree = createTree(-8, z);
-                    this.scene.add(leftTree);
-
-                    // Arbre côté droit (derrière les rails)
-                    const rightTree = createTree(8, z);
-                    this.scene.add(rightTree);
+                    this.scene.add(createTree(-8, z));
+                    this.scene.add(createTree(8, z));
                 }
             }
 
-            // --- CRÉATION DU SOL VERT (TERRAIN) ---
-            const groundGeometry = new THREE.PlaneGeometry(200, 200); // Un grand carré de 200x200 unités
+            // --- SOL VERT (TERRAIN) ---
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
             const groundMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x3b5323, // Un vert olive / terre plus profond
-                roughness: 1.0   // 1.0 = totalement mat (ne brille pas comme du plastique)
+                color: 0x3b5323,
+                roughness: 1.0
             });
             
             const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2; // On le met à plat sur le sol
-            ground.position.y = -0.02; // Juste en dessous de la route (-0.01) pour éviter les conflits d'affichage
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.02;
             this.scene.add(ground);
 
             // --- BOUCLE DES MAISONS ---
             for (const data of housesData) {
                 const gltf = await loader.loadAsync(data.exteriorModel);
+
+                // Si on est déjà entré dans une maison pendant le chargement, on arrête de construire le quartier
+                if (this.isLeaving) return;
+
                 const houseMesh = gltf.scene;
 
-                // CORRECTION 1 : Le problème des textures grises/noires
                 // On désactive l'effet miroir/métal de tous les matériaux
                 houseMesh.traverse((child) => {
                     if (child.isMesh && child.material) {
-                        child.material.metalness = 0; // Ne reflète plus le vide noir
-                        child.material.roughness = 0.8; // Matériau mat qui accroche bien la lumière
+                        child.material.metalness = 0;
+                        child.material.roughness = 0.8;
                     }
                 });
 
-                // CORRECTION 2 : Le problème des tailles
-                // On utilise l'échelle définie dans le JSON (ou 1 par défaut)
+                // Échelle définie dans le JSON (ou 1 par défaut)
                 const s = data.scale || 1;
                 houseMesh.scale.set(s, s, s);
 
-                // On centre parfaitement la maison APRÈS l'avoir redimensionnée
+                // On centre la maison APRÈS l'avoir redimensionnée
                 const box = new THREE.Box3().setFromObject(houseMesh);
                 const center = box.getCenter(new THREE.Vector3());
                 houseMesh.position.set(-center.x, -box.min.y, -center.z);
@@ -247,9 +246,13 @@ export default class LandingState extends BaseState {
                 this.scene.add(houseGroup);
                 this.houses.push(houseGroup);
 
-                // LIEN : le parc est affiché mais n'est pas cliquable
+                // Le parc est affiché mais n'est pas cliquable
                 if (data.type !== 'park') {
                     this.clickableHouses.push(houseGroup);
+
+                    // SURVOL : on mémorise la hauteur du toit pour y placer la fiche
+                    const top = new THREE.Box3().setFromObject(houseGroup).max.y;
+                    this.houseTops.set(houseGroup, top);
                 }
             }
             
@@ -260,7 +263,7 @@ export default class LandingState extends BaseState {
         }
     }
 
-        // En-tête : nom de l'agence et aide, par-dessus le quartier
+    // En-tête : nom de l'agence et aide, par-dessus le quartier
     createHeader() {
         this.header = document.createElement('header');
         this.header.className = 'site-header';
@@ -277,27 +280,94 @@ export default class LandingState extends BaseState {
         document.body.appendChild(this.header);
     }
 
+    // SURVOL : chaîne de post-traitement (rendu normal → contour → couleurs finales)
+    setupComposer() {
+        const size = new THREE.Vector2(window.innerWidth, window.innerHeight);
+
+        this.composer = new EffectComposer(this.app.renderer);
+        this.composer.addPass(new RenderPass(this.scene, this.camera));
+
+        this.outlinePass = new OutlinePass(size, this.scene, this.camera);
+        this.outlinePass.edgeStrength = 5;       // intensité du contour
+        this.outlinePass.edgeGlow = 0.6;         // halo lumineux autour du contour
+        this.outlinePass.edgeThickness = 2;      // épaisseur
+        this.outlinePass.pulsePeriod = 2;        // le contour "respire" toutes les 2 secondes
+        this.outlinePass.visibleEdgeColor.set('#f0a477'); // terracotta clair
+        this.outlinePass.hiddenEdgeColor.set('#7a3a1c');  // partie cachée derrière d'autres objets
+        this.composer.addPass(this.outlinePass);
+
+        // Applique le tone mapping et les couleurs finales (sinon l'image serait plus terne)
+        this.composer.addPass(new OutputPass());
+    }
+
+    // SURVOL : calque HTML et fiche flottante (une seule, déplacée de maison en maison)
+    setupHouseCard() {
+        this.labelRenderer = new CSS2DRenderer();
+        this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        this.labelRenderer.domElement.className = 'landing-label-layer';
+        document.body.appendChild(this.labelRenderer.domElement);
+
+        const element = document.createElement('div');
+        element.className = 'house-card';
+
+        this.houseCard = new CSS2DObject(element);
+        this.houseCard.center.set(0.5, 1); // la fiche est posée par son bas (sa pointe) sur le point 3D
+        this.houseCard.visible = false;
+        this.scene.add(this.houseCard);
+    }
+
+    // SURVOL : remplit la fiche avec les infos de la maison et la place au-dessus de son toit
+    showHouseCard(house) {
+        const data = house.userData;
+        const meta = [data.surface, data.levels].filter(Boolean).join(' · ');
+
+        const element = this.houseCard.element;
+        element.innerHTML = `
+            <h3>${data.name}</h3>
+            <p class="house-card-price">${data.price ?? ''}</p>
+            ${meta ? `<p class="house-card-meta">${meta}</p>` : ''}
+            <p class="house-card-cta">Cliquer pour visiter →</p>
+        `;
+        // Relance l'animation d'apparition à chaque nouvelle maison
+        element.style.animation = 'none';
+        void element.offsetWidth;
+        element.style.animation = '';
+
+        const top = this.houseTops.get(house) ?? 5;
+        this.houseCard.position.set(house.position.x, top + 1, house.position.z);
+        this.houseCard.visible = true;
+    }
+
+    hideHouseCard() {
+        if (this.houseCard) this.houseCard.visible = false;
+    }
+
+    onResize() {
+        // App.js redimensionne le renderer et la caméra, mais pas le post-traitement ni le calque HTML
+        if (this.composer) this.composer.setSize(window.innerWidth, window.innerHeight);
+        if (this.labelRenderer) this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
     onMouseMove(event) {
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
-    // LIEN : on retient où le bouton de la souris a été enfoncé
+    // On retient où le bouton de la souris a été enfoncé
     onPointerDown(event) {
         this.pointerDownPosition.set(event.clientX, event.clientY);
     }
 
     onClick(event) {
-        // LIEN : si la souris a bougé entre l'appui et le relâchement, c'était un glisser de caméra
+        // Si la souris a bougé entre l'appui et le relâchement, c'était un glisser de caméra
         const moved = this.pointerDownPosition.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
         if (moved > 5) return;
 
         if (this.hoveredHouse && !this.isLeaving) {
-            // On peut maintenant lire les données de la maison cliquée !
             const data = this.hoveredHouse.userData;
             console.log(`Maison cliquée : ${data.name} - Prix : ${data.price}`);
 
-            // LIEN : passage à la visite intérieure
+            // Passage à la visite intérieure
             if (data.interiorModel) {
                 this.isLeaving = true;
                 this.app.stateManager.switchState(new InteriorState(this.app, data));
@@ -308,74 +378,73 @@ export default class LandingState extends BaseState {
     update(deltaTime) {
         this.controls.update(); 
         
-        
         // --- CYCLE JOUR / NUIT ANIMÉ ---
-        this.sunAngle += deltaTime * 0.1; // Ajuste la vitesse (plus c'est haut, plus le temps passe vite)
+        this.sunAngle += deltaTime * 0.1;
         
         const radius = 50;
         const sunX = Math.cos(this.sunAngle) * radius;
-        const sunY = Math.sin(this.sunAngle) * radius; // Hauteur du soleil (-50 à +50)
+        const sunY = Math.sin(this.sunAngle) * radius;
 
-        // On déplace la lumière directionnelle (le soleil/la lune)
         if (this.directionalLight) {
             this.directionalLight.position.set(sunX, sunY, 20);
 
-            // Si le soleil est au-dessus de l'horizon (Jour)
             if (sunY > 0) {
-                this.scene.background.set('#87CEEB'); // Ciel bleu clair
+                this.scene.background.set('#87CEEB');
                 this.directionalLight.intensity = 1.5;
                 this.directionalLight.color.set('#ffffff');
-            } 
-            // Si le soleil est sous l'horizon (Nuit)
-            else {
-                this.scene.background.set('#0b1d3a'); // Bleu nuit profond
-                this.directionalLight.intensity = 0.3; // Lumière de lune tamisée
-                this.directionalLight.color.set('#7a9cc6'); // Teinte bleutée lunaire
+            } else {
+                this.scene.background.set('#0b1d3a');
+                this.directionalLight.intensity = 0.3;
+                this.directionalLight.color.set('#7a9cc6');
             }
         }
 
-        
+        // --- SURVOL DES MAISONS ---
         this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        // LIEN : on ne teste que les maisons visitables (le parc ne se soulève pas)
         const intersects = this.raycaster.intersectObjects(this.clickableHouses, true);
 
         if (intersects.length > 0) {
-            // On remonte l'arborescence pour trouver le "Group" principal
+            // On remonte l'arborescence pour trouver le "Group" principal de la maison
             let object = intersects[0].object;
             while (object.parent && !object.userData.id) {
                 object = object.parent;
             }
 
             if (this.hoveredHouse !== object) {
-                // On abaisse l'ancienne maison si on passe direct de l'une à l'autre
-                if (this.hoveredHouse) this.hoveredHouse.position.y -= 0.5; 
-                
                 this.hoveredHouse = object;
-                this.hoveredHouse.position.y += 0.5; // On soulève la nouvelle
+                this.outlinePass.selectedObjects = [object]; // SURVOL : contour lumineux
+                this.showHouseCard(object);                  // SURVOL : fiche flottante
                 document.body.style.cursor = 'pointer';
             }
-        } else {
-            if (this.hoveredHouse) {
-                this.hoveredHouse.position.y -= 0.5;
-                this.hoveredHouse = null;
-                document.body.style.cursor = 'default';
-            }
+        } else if (this.hoveredHouse) {
+            this.hoveredHouse = null;
+            this.outlinePass.selectedObjects = [];
+            this.hideHouseCard();
+            document.body.style.cursor = 'default';
         }
 
-        this.app.renderer.render(this.scene, this.camera);
+        // SURVOL : rendu via le post-traitement (au lieu de renderer.render), puis le calque HTML
+        if (this.composer) this.composer.render(deltaTime);
+        if (this.labelRenderer) this.labelRenderer.render(this.scene, this.camera);
     }
 
     exit() {
         if (this.header) this.header.remove();
+        if (this.labelRenderer) this.labelRenderer.domElement.remove(); // SURVOL
+
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('click', this.onClick);
-        window.removeEventListener('pointerdown', this.onPointerDown); // LIEN
+        window.removeEventListener('pointerdown', this.onPointerDown);
+        window.removeEventListener('resize', this.onResize); // SURVOL
 
-        document.body.style.cursor = 'default'; // LIEN : sinon la main reste affichée dans l'intérieur
-        this.controls.dispose();                 // LIEN : la caméra du quartier ne réagit plus à la souris
+        document.body.style.cursor = 'default';
+        this.controls.dispose();
 
-        // LIEN : libère la mémoire de TOUTE la scène (maisons, route, arbres, sol, textures)
+        // SURVOL : libère les images intermédiaires du post-traitement
+        if (this.outlinePass) this.outlinePass.dispose();
+        if (this.composer) this.composer.dispose();
+
+        // Libère la mémoire de toute la scène (maisons, route, arbres, sol, textures)
         this.scene.traverse((child) => {
             if (child.isMesh) {
                 child.geometry.dispose();
@@ -390,5 +459,6 @@ export default class LandingState extends BaseState {
         });
         this.houses = [];
         this.clickableHouses = [];
+        this.houseTops.clear();
     }
 }
