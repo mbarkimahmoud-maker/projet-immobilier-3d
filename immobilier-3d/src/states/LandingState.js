@@ -8,6 +8,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';         
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js'; // SURVOL
 import BaseState from './BaseState.js';
 import InteriorState from './InteriorState.js';
+import PanoramaState from './PanoramaState.js';
 
 export default class LandingState extends BaseState {
     constructor(app) {
@@ -368,10 +369,13 @@ export default class LandingState extends BaseState {
             console.log(`Maison cliquée : ${data.name} - Prix : ${data.price}`);
 
             // Passage à la visite intérieure
-            if (data.interiorModel) {
+            if (data.interiorType === '360') {
+                this.isLeaving = true;
+                this.app.stateManager.switchState(new PanoramaState(this.app, data));
+            } else if (data.interiorModel) {
                 this.isLeaving = true;
                 this.app.stateManager.switchState(new InteriorState(this.app, data));
-            }
+        }
         }
     }
 

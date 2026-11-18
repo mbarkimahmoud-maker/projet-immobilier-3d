@@ -257,5 +257,54 @@
     "position": [15, 0, 15],
     "rotationY": -1.57,
     "scale": 0.5
+  },{
+    "id": "house-5",
+    "name": "Villa Droite 2",
+    "price": "320 000 €",
+    "surface": "185 m²",
+    "levels": "2 niveaux",
+    "exteriorModel": "/models/american_house.glb",
+    "position": [15, 0, 38],
+    "rotationY": -1.57,
+    "scale": 0.5,
+    "interiorType": "360",
+    "rooms": [
+      {
+        "id": "salon",
+        "title": "Salon",
+        "panorama": "/panoramas/house-5/salon.jpg",
+        "hotspots": [
+          { "targetRoom": "cuisine", "label": "Cuisine →", "position": [8, 0, -5] },
+          { "targetRoom": "bed", "label": "Chambre →", "position": [-8, 0, -4] },
+          { "targetRoom": "bathroom", "label": "Salle de bain", "position": [2, -0.5, 9] }
+        ]
+      },
+      {
+        "id": "cuisine",
+        "title": "Cuisine",
+        "panorama": "/panoramas/house-5/cuisine.jpg",
+        "hotspots": [
+          { "targetRoom": "salon", "label": "← Salon", "position": [-8, 0, 5] }
+        ]
+      },
+      {
+        "id": "bed",
+        "title": "Chambre",
+        "panorama": "/panoramas/house-5/bed.jpg",
+        "hotspots": [
+          { "targetRoom": "salon", "label": "← Salon", "position": [8, 0, 4] },
+          { "targetRoom": "bathroom", "label": "Salle de bain →", "position": [0, 0, -9] }
+        ]
+      },
+      {
+        "id": "bathroom",
+        "title": "Salle de bain",
+        "panorama": "/panoramas/house-5/bathroom.jpg",
+        "hotspots": [
+          { "targetRoom": "bed", "label": "← Chambre", "position": [0, 0, 9] }
+        ]
+      }
+    ]
   }
+  
 ]
