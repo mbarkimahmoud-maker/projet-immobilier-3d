@@ -2,7 +2,9 @@
   {
     "id": "house-1",
     "name": "Villa Gauche 1",
-    "price": "350 000 €",
+    "price": "560 000 €",
+    "surface": "180 m²",
+    "levels": "2 niveaux",
     "exteriorModel": "/models/exterior_1.glb",
     "position": [-25, 0, -15],
     "rotationY": 1.57,
@@ -61,7 +63,9 @@
   {
     "id": "house-2",
     "name": "Villa Gauche 2",
-    "price": "420 000 €",
+    "price": "520 000 €",
+    "surface": "170 m²",
+    "levels": "2 niveaux",
     "exteriorModel": "/models/exterior_2.glb",
     "position": [-25, 0, 18],
     "rotationY": 1.57,
@@ -122,7 +126,9 @@
   {
     "id": "house-3",
     "name": "Villa Gauche 3",
-    "price": "380 000 €",
+    "price": "820 000 €",
+    "surface": "250 m²",
+    "levels": "3 niveaux",
     "exteriorModel": "/models/exterior_3.glb",
     "position": [-25, 0, 40],
     "rotationY": 1.57,
@@ -208,7 +214,9 @@
   {
     "id": "house-4",
     "name": "Villa Droite 1",
-    "price": "410 000 €",
+    "price": "185 000 €",
+    "surface": "60 m²",
+    "levels": "Plain-pied",
     "exteriorModel": "/models/exterior_4.glb",
     "position": [15, 0, -15],
     "rotationY": -1.57,
