@@ -9,6 +9,7 @@ import BaseState from './BaseState.js';
 import LandingState from './LandingState.js';
 import '../ui/interior.css';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import loadingScreen from '../ui/LoadingScreen.js';
 
 const DOWN = new THREE.Vector3(0, -1, 0);
 
@@ -91,6 +92,7 @@ export default class InteriorState extends BaseState {
     }
         // Hauteur de marche maximale propre à chaque maison (escaliers plus raides)
     this.maxStepUp = this.houseData.maxStepUp ?? 0.2;
+    loadingScreen.show(this.houseData.name ?? 'Visite', 'Chargement de la visite…');
 
 
     // Éclairage d'environnement : une lumière de studio qui donne reflets et nuances aux matériaux
@@ -112,15 +114,24 @@ export default class InteriorState extends BaseState {
     try {
       const loader = new GLTFLoader();
       loader.setMeshoptDecoder(MeshoptDecoder); // nécessaire pour les modèles compressés avec meshopt
-      const gltf = await loader.loadAsync(path);
+      // Le téléchargement représente 90 % de la barre, le calcul des collisions les 10 % restants
+      const gltf = await loader.loadAsync(path, (xhr) => {
+        if (xhr.total) loadingScreen.setProgress(0.9 * xhr.loaded / xhr.total);
+      });
       this.model = gltf.scene;
       this.prepareModel(this.model);
       this.scene.add(this.model);
     } catch (error) {
       console.error('Impossible de charger le modèle intérieur :', path, error);
+      loadingScreen.hide();
       return;
     }
 
+    // Calcul des collisions : on prévient l'utilisateur, et on laisse au navigateur
+    // le temps d'afficher le texte avant ce calcul qui bloque pendant une ou deux secondes
+    loadingScreen.setProgress(0.9);
+    loadingScreen.setSubtitle('Préparation de la visite…');
+    await new Promise((resolve) => setTimeout(resolve, 50));
     this.buildCollider();
     this.createSurroundings(); // ciel, herbe et arbres visibles par les fenêtres
 
@@ -146,7 +157,8 @@ export default class InteriorState extends BaseState {
     this.createInfoPanel();
     this.createToolbar();
     window.addEventListener('resize', this.onResize);
-
+    loadingScreen.setProgress(1);
+    loadingScreen.hide();
     this.isReady = true;
     this.updateUI();
   }
