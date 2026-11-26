@@ -9,6 +9,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import BaseState from './BaseState.js';
 import InteriorState from './InteriorState.js';
 import PanoramaState from './PanoramaState.js';
+import loadingScreen from '../ui/LoadingScreen.js';
 
 export default class LandingState extends BaseState {
     constructor(app) {
@@ -70,6 +71,7 @@ export default class LandingState extends BaseState {
         this.createHeader();
         this.setupComposer();     // SURVOL
         this.setupHouseCard();    // SURVOL
+                loadingScreen.show('Domus 3D', 'Chargement du quartier…');
 
         const loader = new GLTFLoader();
 
@@ -211,8 +213,13 @@ export default class LandingState extends BaseState {
             this.scene.add(ground);
 
             // --- BOUCLE DES MAISONS ---
-            for (const data of housesData) {
-                const gltf = await loader.loadAsync(data.exteriorModel);
+            for (const [index, data] of housesData.entries()) {
+                // Chaque fichier compte pour une part égale de la barre de progression
+                const gltf = await loader.loadAsync(data.exteriorModel, (xhr) => {
+                    if (xhr.total) {
+                        loadingScreen.setProgress((index + xhr.loaded / xhr.total) / housesData.length);
+                    }
+                });
 
                 // Si on est déjà entré dans une maison pendant le chargement, on arrête de construire le quartier
                 if (this.isLeaving) return;
@@ -258,9 +265,12 @@ export default class LandingState extends BaseState {
             }
             
             console.log("Quartier chargé avec", this.houses.length, "élément(s) et une route !");
+            loadingScreen.setProgress(1);
+            loadingScreen.hide();
 
         } catch (error) {
             console.error("Erreur lors de la création du quartier :", error);
+            loadingScreen.hide(); // on ne reste pas bloqué sur l'écran de chargement
         }
     }
 
